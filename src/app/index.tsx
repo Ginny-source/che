@@ -1,98 +1,141 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { router } from "expo-router";
+import {
+  Image,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  StatusBar,
+} from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+/*
+ * Splash / Welcome Screen
+ *
+ * This screen matches the first screen in the reference design.
+ *
+ * IMPORTANT:
+ * The chef image is a real image asset, NOT an icon.
+ *
+ * Add your image here:
+ * assets/logo.png
+ */
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+// Import the actual chef image from the assets folder
+const chefImage = require("../../assets/images/logo.png");
+
+export default function Index() {
+  /*
+   * Navigate to Menu_manager.tsx when the
+   * "Get Started" button is pressed.
+   */
+  const handleGetStarted = () => {
+    router.push("../Menu_manager");
+  };
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        {/* ------------------------------------------------
+            CHEF IMAGE
+            This is an actual image, not an icon.
+        ------------------------------------------------- */}
+        <Image
+          source={chefImage}
+          style={styles.chefImage}
+          resizeMode="contain"
+        />
+
+        {/* ------------------------------------------------
+            APP TITLE
+        ------------------------------------------------- */}
+        <Text style={styles.appName}>MY CHEFMANAGER</Text>
+
+        {/* ------------------------------------------------
+            GET STARTED BUTTON
+            Connects to Menu_manager.tsx
+        ------------------------------------------------- */}
+        <TouchableOpacity
+          style={styles.getStartedButton}
+          onPress={handleGetStarted}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.getStartedText}>get started</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
-}
+/* ======================================================
+   STYLES
+====================================================== */
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
+  /*
+   * Safe area fills the entire phone screen.
+   */
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    backgroundColor: "#2FA8D8",
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
+
+  /*
+   * Main screen container.
+   */
+  container: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    backgroundColor: "#2FA8D8",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  title: {
-    textAlign: 'center',
+
+  /*
+   * Actual chef image from the assets folder.
+   *
+   * Adjust the width/height if your image is a
+   * different size.
+   */
+  chefImage: {
+    width: 190,
+    height: 220,
+    marginBottom: 20,
   },
-  code: {
-    textTransform: 'uppercase',
+
+  /*
+   * "MY CHEFMANAGER" text underneath the image.
+   */
+  appName: {
+    fontSize: 18,
+    fontWeight: "600",
+    fontStyle: "italic",
+    color: "#000000",
+    marginBottom: 155,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+
+  /*
+   * Get Started button.
+   */
+  getStartedButton: {
+    position: "absolute",
+    bottom: 120,
+    backgroundColor: "#EFEFEF",
+    width: 145,
+    height: 38,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  /*
+   * Get Started button text.
+   */
+  getStartedText: {
+    color: "#000000",
+    fontSize: 16,
+    fontWeight: "500",
+    fontStyle: "italic",
   },
 });
