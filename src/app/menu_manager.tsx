@@ -22,84 +22,154 @@ type Dish = {
 };
 
 export default function MenuManager() {
-  const params = useLocalSearchParams();
+  const params = useLocalSearchParams<{
+    dish?: string | string[];
+    imageUri?: string | string[];
+  }>();
 
   const [dishes, setDishes] = useState<Dish[]>([]);
 
   /*
-   * RECEIVE THE DISH FROM ADD MENU ITEM
-   */
+  ============================================================
+  GET A PARAMETER AS A STRING
+  ============================================================
+  */
+  const getParamString = (
+    value: string | string[] | undefined
+  ): string => {
+    if (value === undefined) {
+      return "";
+    }
+
+    if (Array.isArray(value)) {
+      return value[0] || "";
+    }
+
+    return String(value);
+  };
+
+  /*
+  ============================================================
+  READ DISH FROM ADD_MENU_ITEM
+  ============================================================
+  */
   useEffect(() => {
-    if (!params.dish) {
+    const dishParameter = getParamString(params.dish);
+    const separateImageUri = getParamString(params.imageUri);
+
+    if (!dishParameter && !separateImageUri) {
       return;
     }
 
     try {
-      let dishText: string;
+      let newDish: Dish | null = null;
 
       /*
-       * Expo Router may return a parameter as a string
-       * or as an array of strings.
-       */
-      if (Array.isArray(params.dish)) {
-        dishText = params.dish[0];
-      } else {
-        dishText = String(params.dish);
+      ----------------------------------------------------------
+      TRY TO READ THE COMPLETE DISH
+      ----------------------------------------------------------
+      */
+
+      if (dishParameter) {
+        try {
+          /*
+           * First try the parameter normally.
+           */
+          newDish = JSON.parse(dishParameter);
+        } catch {
+          /*
+           * If it was URL encoded, decode it.
+           */
+          try {
+            const decodedDish = decodeURIComponent(dishParameter);
+            newDish = JSON.parse(decodedDish);
+          } catch (error) {
+            console.log("Could not decode dish:", error);
+          }
+        }
       }
 
       /*
-       * Decode the parameter if necessary.
-       */
-      let newDish: Dish;
+      ----------------------------------------------------------
+      IF THE IMAGE WAS SENT SEPARATELY
+      ----------------------------------------------------------
+      */
 
-      try {
-        newDish = JSON.parse(dishText);
-      } catch {
-        newDish = JSON.parse(decodeURIComponent(dishText));
-      }
+      if (newDish) {
+        /*
+         * Make sure imageUri is always a string.
+         */
+        let receivedImage = "";
 
-      /*
-       * Make sure the dish has an image URI.
-       */
-      console.log("DISH RECEIVED:", newDish);
-      console.log("IMAGE RECEIVED:", newDish.imageUri);
-
-      if (!newDish.imageUri) {
-        console.log("WARNING: No image URI was received.");
-      }
-
-      /*
-       * Add the dish to the list.
-       */
-      setDishes((oldDishes) => {
-        const alreadyAdded = oldDishes.some(
-          (dish) => dish.id === newDish.id
-        );
-
-        if (alreadyAdded) {
-          return oldDishes;
+        if (
+          typeof newDish.imageUri === "string" &&
+          newDish.imageUri.trim() !== ""
+        ) {
+          receivedImage = newDish.imageUri;
         }
 
-        return [...oldDishes, newDish];
-      });
+        /*
+         * If the dish did not contain the image,
+         * use the separate imageUri parameter.
+         */
+        if (!receivedImage && separateImageUri) {
+          try {
+            receivedImage = decodeURIComponent(separateImageUri);
+          } catch {
+            receivedImage = separateImageUri;
+          }
+        }
+
+        const completeDish: Dish = {
+          ...newDish,
+          imageUri: receivedImage,
+        };
+
+        console.log("--------------------------------");
+        console.log("DISH RECEIVED");
+        console.log("Name:", completeDish.name);
+        console.log("Course:", completeDish.course);
+        console.log("Price:", completeDish.price);
+        console.log("IMAGE URI:", completeDish.imageUri);
+        console.log("--------------------------------");
+
+        /*
+         * Add the dish to the Menu Manager.
+         */
+        setDishes((currentDishes) => {
+          const alreadyExists = currentDishes.some(
+            (dish) => dish.id === completeDish.id
+          );
+
+          if (alreadyExists) {
+            return currentDishes;
+          }
+
+          return [...currentDishes, completeDish];
+        });
+      }
     } catch (error) {
       console.log("ERROR READING DISH:", error);
     }
-  }, [params.dish]);
+  }, [params.dish, params.imageUri]);
 
   /*
-   * ADD MENU ITEM
-   */
+  ============================================================
+  ADD MENU ITEM
+  ============================================================
+  */
   const handleAddMenuItem = () => {
-    router.push("../add_menu_item");
+    router.push("/add_menu_item");
   };
 
   /*
-   * VIEW DISH
-   */
+  ============================================================
+  VIEW MENU
+  ============================================================
+  */
   const handleViewDish = (dish: Dish) => {
     router.push({
-      pathname: "../view_menu",
+      pathname: "/view_menu",
       params: {
         dish: JSON.stringify(dish),
       },
@@ -107,32 +177,37 @@ export default function MenuManager() {
   };
 
   /*
-   * BACK BUTTON
-   *
-   * If there is a previous screen, go back.
-   * Otherwise go to the main screen.
-   */
+  ============================================================
+  BACK BUTTON
+  ============================================================
+  */
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/");
-    }
+    router.replace("/");
   };
 
+  /*
+  ============================================================
+  SCREEN
+  ============================================================
+  */
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
 
-        {/* ================= HEADER ================= */}
+        {/* ==================================================
+            HEADER
+        ================================================== */}
 
         <View style={styles.header}>
+
           <TouchableOpacity
             style={styles.backButton}
             onPress={handleBack}
             activeOpacity={0.7}
           >
-            <Text style={styles.backArrow}>←</Text>
+            <Text style={styles.backArrow}>
+              ←
+            </Text>
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>
@@ -140,11 +215,14 @@ export default function MenuManager() {
           </Text>
 
           <View style={styles.headerSpacer} />
+
         </View>
 
         <View style={styles.headerLine} />
 
-        {/* ================= ADD MENU ITEM ================= */}
+        {/* ==================================================
+            ADD MENU ITEM BUTTON
+        ================================================== */}
 
         <TouchableOpacity
           style={styles.addMenuButton}
@@ -156,56 +234,100 @@ export default function MenuManager() {
           </Text>
         </TouchableOpacity>
 
-        {/* ================= MENU ITEMS ================= */}
+        {/* ==================================================
+            MENU ITEMS
+        ================================================== */}
 
         <Text style={styles.sectionTitle}>
           MENU ITEMS
         </Text>
 
         <View style={styles.dishArea}>
+
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.scrollContent,
-              dishes.length === 0 &&
-                styles.emptyScrollContent,
+              dishes.length === 0
+                ? styles.emptyScrollContent
+                : null,
             ]}
           >
-            {/* NO DISH */}
+
+            {/* ==================================================
+                NO DISH
+            ================================================== */}
+
             {dishes.length === 0 ? (
+
               <Text style={styles.noDishText}>
                 No dish
               </Text>
+
             ) : (
-              /* DISH LIST */
+
+              /* ==================================================
+                 DISH LIST
+              ================================================== */
+
               dishes.map((dish) => (
+
                 <TouchableOpacity
                   key={dish.id}
                   style={styles.dishCard}
                   onPress={() => handleViewDish(dish)}
                   activeOpacity={0.8}
                 >
-                  {/* ================= IMAGE ================= */}
 
-                  {dish.imageUri ? (
+                  {/* ==================================================
+                      IMAGE
+                  ================================================== */}
+
+                  {dish.imageUri &&
+                  dish.imageUri.trim() !== "" ? (
+
                     <Image
+                      key={dish.imageUri}
                       source={{
                         uri: dish.imageUri,
                       }}
                       style={styles.dishImage}
                       resizeMode="cover"
+                      onLoad={() => {
+                        console.log(
+                          "IMAGE SUCCESSFULLY LOADED:",
+                          dish.imageUri
+                        );
+                      }}
+                      onError={(error) => {
+                        console.log(
+                          "IMAGE FAILED TO LOAD:",
+                          error.nativeEvent
+                        );
+
+                        console.log(
+                          "IMAGE URI:",
+                          dish.imageUri
+                        );
+                      }}
                     />
+
                   ) : (
+
                     <View style={styles.imagePlaceholder}>
                       <Text style={styles.imagePlaceholderText}>
                         No image
                       </Text>
                     </View>
+
                   )}
 
-                  {/* ================= DISH INFORMATION ================= */}
+                  {/* ==================================================
+                      DISH INFORMATION
+                  ================================================== */}
 
                   <View style={styles.dishInfo}>
+
                     <Text
                       style={styles.dishName}
                       numberOfLines={2}
@@ -220,14 +342,21 @@ export default function MenuManager() {
                     <Text style={styles.dishPrice}>
                       R {Number(dish.price).toFixed(2)}
                     </Text>
+
                   </View>
+
                 </TouchableOpacity>
+
               ))
             )}
+
           </ScrollView>
+
         </View>
 
-        {/* ================= STATISTICS ================= */}
+        {/* ==================================================
+            STATISTICS
+        ================================================== */}
 
         <TouchableOpacity
           style={styles.statisticsButton}
@@ -244,11 +373,12 @@ export default function MenuManager() {
   );
 }
 
-/* =========================================================
+/* ============================================================
    STYLES
-========================================================= */
+============================================================ */
 
 const styles = StyleSheet.create({
+
   safeArea: {
     flex: 1,
     backgroundColor: "#2FA9D9",
@@ -259,7 +389,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#2FA9D9",
   },
 
-  /* ================= HEADER ================= */
+  /* ==========================================================
+     HEADER
+  ========================================================== */
 
   header: {
     height: 65,
@@ -299,36 +431,42 @@ const styles = StyleSheet.create({
     marginHorizontal: 18,
   },
 
-  /* ================= ADD BUTTON ================= */
+  /* ==========================================================
+     ADD MENU ITEM
+  ========================================================== */
 
   addMenuButton: {
     height: 50,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 15,
-    marginHorizontal: 22,
+    backgroundColor: "#969A9B",
+    borderRadius: 12,
+    marginHorizontal: 28,
     marginTop: 20,
     justifyContent: "center",
     alignItems: "center",
   },
 
   addMenuButtonText: {
-    color: "#2FA9D9",
+    color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "700",
   },
 
-  /* ================= SECTION ================= */
+  /* ==========================================================
+     MENU ITEMS TITLE
+  ========================================================== */
 
   sectionTitle: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "800",
     marginHorizontal: 22,
     marginTop: 25,
     marginBottom: 10,
   },
 
-  /* ================= DISH AREA ================= */
+  /* ==========================================================
+     DISH AREA
+  ========================================================== */
 
   dishArea: {
     flex: 1,
@@ -352,12 +490,14 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  /* ================= DISH CARD ================= */
+  /* ==========================================================
+     DISH CARD
+  ========================================================== */
 
   dishCard: {
     width: "100%",
     minHeight: 125,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#D9D9D9",
     borderRadius: 18,
     marginBottom: 15,
     padding: 10,
@@ -365,31 +505,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  /* ================= DISH IMAGE ================= */
+  /* ==========================================================
+     DISH IMAGE
+  ========================================================== */
 
   dishImage: {
     width: 105,
     height: 105,
     borderRadius: 14,
-    backgroundColor: "#969A9B",
+    backgroundColor: "#FFFFFF",
   },
 
   imagePlaceholder: {
     width: 105,
     height: 105,
     borderRadius: 14,
-    backgroundColor: "#969A9B",
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
   },
 
   imagePlaceholderText: {
-    color: "#FFFFFF",
+    color: "#969A9B",
     fontSize: 13,
     fontWeight: "600",
   },
 
-  /* ================= DISH INFO ================= */
+  /* ==========================================================
+     DISH INFORMATION
+  ========================================================== */
 
   dishInfo: {
     flex: 1,
@@ -398,32 +542,34 @@ const styles = StyleSheet.create({
   },
 
   dishName: {
-    color: "#333333",
+    color: "#000000",
     fontSize: 19,
     fontWeight: "800",
     marginBottom: 5,
   },
 
   dishCourse: {
-    color: "#666666",
+    color: "#555555",
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 7,
   },
 
   dishPrice: {
-    color: "#2FA9D9",
+    color: "#000000",
     fontSize: 17,
     fontWeight: "800",
   },
 
-  /* ================= STATISTICS ================= */
+  /* ==========================================================
+     STATISTICS
+  ========================================================== */
 
   statisticsButton: {
     height: 52,
-    backgroundColor: "#8FD9A8",
-    borderRadius: 15,
-    marginHorizontal: 22,
+    backgroundColor: "#969A9B",
+    borderRadius: 12,
+    marginHorizontal: 28,
     marginTop: 10,
     marginBottom: 20,
     justifyContent: "center",
@@ -435,4 +581,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
   },
+
 });

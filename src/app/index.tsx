@@ -1,137 +1,133 @@
-import { router } from "expo-router";
+import React from "react";
 import {
-  Image,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
-  StatusBar,
-} from 'react-native';
+  Image,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-/*
- * Splash / Welcome Screen
- *
- * This screen matches the first screen in the reference design.
- *
- * IMPORTANT:
- * The chef image is a real image asset, NOT an icon.
- *
- * Add your image here:
- * assets/logo.png
- */
-
-// Import the actual chef image from the assets folder
 const chefImage = require("../../assets/images/logo.png");
 
 export default function Index() {
-  /*
-   * Navigate to Menu_manager.tsx when the
-   * "Get Started" button is pressed.
-   */
   const handleGetStarted = () => {
-    router.push("../Menu_manager");
+    /*
+     * Go directly to Menu_manager.tsx
+     */
+    router.replace("/menu_manager");
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* ------------------------------------------------
-            CHEF IMAGE
-            This is an actual image, not an icon.
-        ------------------------------------------------- */}
+
+        {/* CHEF IMAGE */}
+
         <Image
           source={chefImage}
           style={styles.chefImage}
           resizeMode="contain"
         />
 
-        {/* ------------------------------------------------
-            APP TITLE
-        ------------------------------------------------- */}
-        <Text style={styles.appName}>MY CHEFMANAGER</Text>
+        {/* APP NAME */}
 
-        {/* ------------------------------------------------
-            GET STARTED BUTTON
-            Connects to Menu_manager.tsx
-        ------------------------------------------------- */}
+        <Text style={styles.appName}>
+          MY CHEFMANAGER
+        </Text>
+
+        {/* DESCRIPTION BOX */}
+
+        <View style={styles.descriptionBox}>
+          <Text style={styles.welcomeText}>
+            Welcome
+          </Text>
+
+          <Text style={styles.descriptionText}>
+            A smart and easy to use mobile app that helps you
+            create, organize and design your menu
+          </Text>
+        </View>
+
+        {/* GET STARTED */}
+
         <TouchableOpacity
           style={styles.getStartedButton}
           onPress={handleGetStarted}
           activeOpacity={0.8}
         >
-          <Text style={styles.getStartedText}>get started</Text>
+          <Text style={styles.getStartedText}>
+            get started
+          </Text>
         </TouchableOpacity>
+
       </View>
     </SafeAreaView>
   );
 }
 
-/* ======================================================
-   STYLES
-====================================================== */
-
 const styles = StyleSheet.create({
-  /*
-   * Safe area fills the entire phone screen.
-   */
   safeArea: {
     flex: 1,
-    backgroundColor: "#2FA8D8",
+    backgroundColor: "#2FA9D9",
   },
 
-  /*
-   * Main screen container.
-   */
   container: {
     flex: 1,
-    backgroundColor: "#2FA8D8",
+    backgroundColor: "#2FA9D9",
     alignItems: "center",
     justifyContent: "center",
   },
 
-  /*
-   * Actual chef image from the assets folder.
-   *
-   * Adjust the width/height if your image is a
-   * different size.
-   */
   chefImage: {
     width: 190,
     height: 220,
-    marginBottom: 20,
+    marginBottom: 15,
   },
 
-  /*
-   * "MY CHEFMANAGER" text underneath the image.
-   */
   appName: {
     fontSize: 18,
     fontWeight: "600",
     fontStyle: "italic",
     color: "#000000",
-    marginBottom: 155,
+    marginBottom: 35,
   },
 
-  /*
-   * Get Started button.
-   */
+  descriptionBox: {
+    width: 190,
+    minHeight: 102,
+    backgroundColor: "#D9D9D9",
+    borderRadius: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+  },
+
+  welcomeText: {
+    color: "#000000",
+    fontSize: 16,
+    fontWeight: "600",
+    fontStyle: "italic",
+    marginBottom: 4,
+  },
+
+  descriptionText: {
+    color: "#000000",
+    fontSize: 14,
+    lineHeight: 20,
+    fontStyle: "italic",
+  },
+
   getStartedButton: {
-    position: "absolute",
-    bottom: 120,
-    backgroundColor: "#EFEFEF",
     width: 145,
     height: 38,
+    backgroundColor: "#EFEFEF",
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 35,
   },
 
-  /*
-   * Get Started button text.
-   */
   getStartedText: {
     color: "#000000",
     fontSize: 16,

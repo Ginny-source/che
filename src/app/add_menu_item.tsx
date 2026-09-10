@@ -98,12 +98,21 @@ export default function AddMenuItem() {
    * becomes the screen we return to.
    */
   const handleBackToMenuManager = () => {
-    router.replace("../menu_manager");
+    router.replace({
+      pathname: "../Menu_manager",
+      params: {
+        dish: JSON.stringify({
+          id: Date.now().toString(),
+          name: dishName,
+          description: description,
+          course: course,
+          price: parseFloat(price),
+          imageUri: imageUri,
+        }),
+      },
+    });
   };
 
-  /*
-   * Process and resize the selected image.
-   */
   const processSelectedImage = async (
     selectedImage: ImagePicker.ImagePickerAsset
   ) => {
@@ -1055,4 +1064,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
-});
+})
