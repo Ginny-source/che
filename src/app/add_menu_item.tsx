@@ -10,29 +10,59 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 
-type Course = "Starter" | "Main Course" | "Dessert";
+import {
+  addDish,
+  updateDish,
+  getDishById,
+} from "./dishStorage";
 
-type Dish = {
-  id: string;
-  name: string;
-  description: string;
-  course: Course;
-  price: number;
-  imageUri: string;
-};
+import type { Dish, Course } from "./dishStorage";
+
 
 type PopupType = "success" | "warning" | "error";
 
 export default function AddMenuItem() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+
+const isEditing = Boolean(id);
   const [dishName, setDishName] = useState("");
   const [description, setDescription] = useState("");
   const [course, setCourse] = useState<Course | "">("");
   const [price, setPrice] = useState("");
   const [imageUri, setImageUri] = useState<string | null>(null);
+  // LOAD EXISTING DISH WHEN EDITING
+useEffect(() => {
+  const loadExistingDish = async () => {
+    if (!id) return;
+
+    try {
+      const existingDish = await getDishById(id);
+
+      if (existingDish) {
+        setDishName(existingDish.name);
+        setDescription(existingDish.description);
+        setCourse(existingDish.course);
+        setPrice(String(existingDish.price));
+        setImageUri(existingDish.imageUri);
+      } else {
+        showCutePopup(
+          "error",
+          "Dish not found",
+          "The dish you are trying to edit could not be found."
+        );
+      }
+    } catch (error) {
+      console.log("Error loading dish for editing:", error);
+    }
+  };
+
+  loadExistingDish();
+}, [id]);
 
   const [nameError, setNameError] = useState(false);
   const [descriptionError, setDescriptionError] = useState(false);
@@ -98,20 +128,8 @@ export default function AddMenuItem() {
    * becomes the screen we return to.
    */
   const handleBackToMenuManager = () => {
-    router.replace({
-      pathname: "../Menu_manager",
-      params: {
-        dish: JSON.stringify({
-          id: Date.now().toString(),
-          name: dishName,
-          description: description,
-          course: course,
-          price: parseFloat(price),
-          imageUri: imageUri,
-        }),
-      },
-    });
-  };
+  router.replace("/menu_manager");
+};
 
   const processSelectedImage = async (
     selectedImage: ImagePicker.ImagePickerAsset
@@ -340,93 +358,98 @@ export default function AddMenuItem() {
   /*
    * Validate and save dish.
    */
-  const handleSaveDish = () => {
-    const cleanName = dishName.trim();
-    const cleanDescription = description.trim();
-    const cleanPrice = price.trim();
+ const handleSaveDish = async () => {
+  const cleanName = dishName.trim();
+  const cleanDescription = description.trim();
+  const cleanPrice = price.trim();
 
-    const missingName = cleanName.length === 0;
-    const missingDescription = cleanDescription.length === 0;
-    const missingCourse = course === "";
-    const missingPrice = cleanPrice.length === 0;
-    const missingImage = !imageUri;
+  const missingName = cleanName.length === 0;
+  const missingDescription = cleanDescription.length === 0;
+  const missingCourse = course === "";
+  const missingPrice = cleanPrice.length === 0;
+  const missingImage = !imageUri;
 
-    setNameError(missingName);
-    setDescriptionError(missingDescription);
-    setCourseError(missingCourse);
-    setPriceError(missingPrice);
-    setImageError(missingImage);
+  setNameError(missingName);
+  setDescriptionError(missingDescription);
+  setCourseError(missingCourse);
+  setPriceError(missingPrice);
+  setImageError(missingImage);
 
-    /*
-     * Stop here if anything is missing.
-     */
-    if (
-      missingName ||
-      missingDescription ||
-      missingCourse ||
-      missingPrice ||
-      missingImage
-    ) {
-      showCutePopup(
-        "error",
-        "Dish not added",
-        "Please complete all the required fields before adding your dish."
-      );
-
-      return;
-    }
-
-    /*
-     * Validate numeric price.
-     */
-    const numericPrice = Number.parseFloat(cleanPrice);
-
-    if (!Number.isFinite(numericPrice)) {
-      setPriceError(true);
-
-      showCutePopup(
-        "error",
-        "Invalid price",
-        "Please enter a valid price for your dish."
-      );
-
-      return;
-    }
-
-    /*
-     * Create the dish.
-     */
-    const newDish: Dish = {
-      id: `${Date.now()}-${Math.random()
-        .toString(36)
-        .substring(2, 9)}`,
-      name: cleanName,
-      description: cleanDescription,
-      course: course as Course,
-      price: numericPrice,
-      imageUri: imageUri,
-    };
-
-    /*
-     * Show success popup.
-     *
-     * When Okay is pressed, the popup closes and then
-     * Menu Manager is opened with the new dish.
-     */
+  if (
+    missingName ||
+    missingDescription ||
+    missingCourse ||
+    missingPrice ||
+    missingImage
+  ) {
     showCutePopup(
-      "success",
-      "Dish added",
-      `${cleanName} has been added to your menu.`,
-      () => {
-        router.replace({
-          pathname: "../menu_manager",
-          params: {
-            dish: JSON.stringify(newDish),
-          },
-        });
-      }
+      "error",
+      "Incomplete information",
+      "Please complete all the required fields."
     );
+    return;
+  }
+
+  const numericPrice = Number.parseFloat(cleanPrice);
+
+  if (!Number.isFinite(numericPrice) || numericPrice < 0) {
+    setPriceError(true);
+
+    showCutePopup(
+      "error",
+      "Invalid price",
+      "Please enter a valid price."
+    );
+
+    return;
+  }
+
+  // Create the dish information
+  const dishData: Dish = {
+    id: id || `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    name: cleanName,
+    description: cleanDescription,
+    course: course as Course,
+    price: numericPrice,
+    imageUri: imageUri || "",
   };
+
+  try {
+    if (isEditing) {
+      // UPDATE EXISTING DISH
+      await updateDish(dishData);
+
+      showCutePopup(
+        "success",
+        "Dish updated!",
+        `${cleanName} has been successfully updated.`,
+        () => {
+          router.replace("/menu_manager");
+        }
+      );
+    } else {
+      // ADD NEW DISH
+      await addDish(dishData);
+
+      showCutePopup(
+        "success",
+        "Dish added!",
+        `${cleanName} has been added to your menu.`,
+        () => {
+          router.replace("/menu_manager");
+        }
+      );
+    }
+  } catch (error) {
+    console.log("Error saving dish:", error);
+
+    showCutePopup(
+      "error",
+      "Save failed",
+      "Your dish could not be saved. Please try again."
+    );
+  }
+};
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -441,7 +464,9 @@ export default function AddMenuItem() {
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Add Menu Item</Text>
+         <Text style={styles.headerTitle}>
+  {isEditing ? "Edit Menu Item" : "Add Menu Item"}
+</Text>
 
           <View style={styles.headerSpacer} />
         </View>
@@ -605,7 +630,9 @@ export default function AddMenuItem() {
             onPress={handleSaveDish}
             activeOpacity={0.8}
           >
-            <Text style={styles.addDishText}>Add Dish</Text>
+           <Text style={styles.addDishText}>
+  {isEditing ? "Save Changes" : "Add Dish"}
+</Text>
           </TouchableOpacity>
         </View>
 

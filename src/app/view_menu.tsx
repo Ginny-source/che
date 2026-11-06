@@ -1,746 +1,278 @@
-import React from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
+  Image,
   TouchableOpacity,
+  StyleSheet,
+  Alert,
   ScrollView,
-  StatusBar,
-} from 'react-native';
-import { SafeAreaView} from 'react-native-safe-area-context';
+} from "react-native";
 
-import { router, useLocalSearchParams } from 'expo-router';
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router, useLocalSearchParams } from "expo-router";
 
-/*
-==============================================================
-CHEF'S MENU MANAGER
-VIEW MENU SCREEN
-==============================================================
-
-This screen displays the details of the dish selected from
-the Menu Manager screen.
-
-Navigation from menu.tsx:
-
-    Dish Card
-        ↓
-    /view_menu?id=123
-
-This screen reads the ID using:
-
-    useLocalSearchParams()
-
-==============================================================
-
-IMPORTANT
---------------------------------------------------------------
-
-The Edit and Delete buttons are intentionally NON-FUNCTIONAL
-for now, as requested.
-
-==============================================================
-*/
-
-
-/*
-==============================================================
-COLOUR TOKENS
-==============================================================
-*/
-
-const COLORS = {
-  blue: '#2FA9D9',
-  white: '#FFFFFF',
-  black: '#111111',
-  grey: '#969A9B',
-  lightGrey: '#E8E8E8',
-};
-
-
-/*
-==============================================================
-DISH TYPE
-==============================================================
-*/
-
-type Dish = {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  course: string;
-  imageUri?: string;
-};
-
-
-/*
-==============================================================
-TEMPORARY DISH DATA
-==============================================================
-
-This is only used so the screen can render while you are
-building the application.
-
-When your shared dish state/context is connected, this section
-should be replaced with the actual dish retrieved using the
-ID passed from menu.tsx.
-
-==============================================================
-*/
-
-const exampleDish: Dish = {
-  id: '1',
-  name: 'Chicken Pasta',
-  description:
-    'Creamy pasta with grilled chicken, mushrooms and parmesan',
-  price: '90.00',
-  course: 'Main Course',
-};
-
-
-/*
-==============================================================
-MAIN SCREEN
-==============================================================
-*/
+import { getDishById, deleteDish } from "./dishStorage";
+import type { Dish } from "./dishStorage";
 
 export default function ViewMenu() {
+  const { id } = useLocalSearchParams<{ id: string }>();
 
-  /*
-  ------------------------------------------------------------
-  GET THE DISH ID
-  ------------------------------------------------------------
-  */
+  const [dish, setDish] = useState<Dish | undefined>();
 
-  const params = useLocalSearchParams();
+  useEffect(() => {
+    loadDish();
+  }, [id]);
 
-  const dishId = Array.isArray(params.id)
-    ? params.id[0]
-    : params.id;
+  const loadDish = async () => {
+    if (!id) return;
 
+    const selectedDish = await getDishById(id);
 
-  /*
-  ------------------------------------------------------------
-  CURRENT DISH
-  ------------------------------------------------------------
-
-  For now we use exampleDish.
-
-  Once your Add Menu Item screen and shared state are connected,
-  use dishId to find the actual dish.
-  ------------------------------------------------------------
-  */
-
-  const dish = exampleDish;
-
-
-  /*
-  ------------------------------------------------------------
-  BACK TO MENU
-  ------------------------------------------------------------
-  */
-
-  const goBackToMenu = () => {
-    router.back();
+    setDish(selectedDish);
   };
 
+  const handleEdit = () => {
+    if (!dish) return;
 
-  /*
-  ============================================================
-  SCREEN
-  ============================================================
-  */
+    router.push({
+      pathname: "/add_menu_item",
+      params: {
+        id: dish.id,
+      },
+    });
+  };
+
+  const handleDelete = () => {
+    if (!dish) return;
+
+    Alert.alert(
+      "Delete Dish",
+      `Are you sure you want to delete ${dish.name}?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteDish(dish.id);
+            router.replace("/menu_manager");
+          },
+        },
+      ],
+    );
+  };
+
+  if (!dish) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <Text style={styles.loadingText}>Loading dish...</Text>
+
+ <TouchableOpacity onPress={() => router.replace("/menu_manager")}>
+  <Text style={styles.buttonText}>Go Back</Text>
+</TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-
-      {/* ----------------------------------------------------
-          STATUS BAR
-      ----------------------------------------------------- */}
-
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={COLORS.blue}
-        translucent={false}
-      />
-
-
-      <View style={styles.container}>
-
-        {/* ==================================================
-            HEADER
-        ================================================== */}
+      <ScrollView style={styles.container}>
+        {/* HEADER */}
 
         <View style={styles.header}>
-
-          {/* Back arrow */}
-
-          <TouchableOpacity
-            style={styles.backButton}
-            activeOpacity={0.7}
-            onPress={goBackToMenu}
-          >
-
-           
-
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
 
+          <Text style={styles.headerTitle}>View Menu</Text>
 
-          {/* Header title */}
-
-          <Text style={styles.headerTitle}>
-            View Menu
-          </Text>
-
-
-          {/* Empty space to keep title centered */}
-
-          <View style={styles.headerRight} />
-
+          <View style={{ width: 35 }} />
         </View>
 
+        <View style={styles.headerLine} />
 
-        {/* Header divider */}
+        {/* DISH IMAGE */}
 
-        <View style={styles.divider} />
-
-
-        {/* ==================================================
-            CONTENT
-        ================================================== */}
-
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
-        >
-
-          {/* =================================================
-              DISH IMAGE
-          ================================================= */}
-
-          <View style={styles.imageContainer}>
-
-           
-
+        {dish.imageUri ? (
+          <Image
+            source={{ uri: dish.imageUri }}
+            style={styles.dishImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Text style={styles.placeholderText}>No Image Available</Text>
           </View>
+        )}
 
+        {/* DISH DETAILS */}
 
-          {/* =================================================
-              DISH NAME + PRICE
-          ================================================= */}
+        <View style={styles.detailsContainer}>
+          <Text style={styles.dishName}>{dish.name}</Text>
 
-          <View style={styles.namePriceRow}>
+          <Text style={styles.course}>{dish.course}</Text>
 
-            <Text
-              style={styles.dishName}
-              numberOfLines={2}
-            >
-              {dish.name}
-            </Text>
+          <Text style={styles.description}>{dish.description}</Text>
 
+          <Text style={styles.price}>R {Number(dish.price).toFixed(2)}</Text>
+        </View>
 
-            <Text style={styles.price}>
-              R{dish.price}
-            </Text>
+        {/* EDIT BUTTON */}
 
-          </View>
+        <TouchableOpacity style={styles.editButton} onPress={handleEdit}>
+          <Text style={styles.buttonText}>Edit Dish</Text>
+        </TouchableOpacity>
 
+        {/* DELETE BUTTON */}
 
-          {/* =================================================
-              DESCRIPTION TITLE
-          ================================================= */}
-
-          <Text style={styles.sectionTitle}>
-            DESCRIPTION
-          </Text>
-
-
-          {/* =================================================
-              DESCRIPTION
-          ================================================= */}
-
-          <Text style={styles.description}>
-            {dish.description}
-          </Text>
-
-
-          {/* =================================================
-              COURSE TITLE
-          ================================================= */}
-
-          <Text style={styles.sectionTitle}>
-            COURSE
-          </Text>
-
-
-          {/* =================================================
-              COURSE PILL
-          ================================================= */}
-
-          <View style={styles.coursePill}>
-
-            <Text style={styles.courseText}>
-              {dish.course}
-            </Text>
-
-          </View>
-
-
-          {/* =================================================
-              EDIT + DELETE
-          ================================================= */}
-
-          <View style={styles.actionRow}>
-
-            {/* EDIT */}
-
-            <TouchableOpacity
-              style={styles.editButton}
-              activeOpacity={0.8}
-              onPress={() => {
-                // Edit functionality will be added later.
-              }}
-            >
-
-              <Text style={styles.editText}>
-                Edit
-              </Text>
-
-            </TouchableOpacity>
-
-
-            {/* DELETE */}
-
-            <TouchableOpacity
-              style={styles.deleteButton}
-              activeOpacity={0.8}
-              onPress={() => {
-                // Delete functionality will be added later.
-              }}
-            >
-
-              <Text style={styles.deleteText}>
-                Delete
-              </Text>
-
-            </TouchableOpacity>
-
-          </View>
-
-
-          {/* =================================================
-              BACK TO MENU
-          ================================================= */}
-
-          <TouchableOpacity
-            style={styles.backToMenuButton}
-            activeOpacity={0.8}
-            onPress={goBackToMenu}
-          >
-
-            <Text style={styles.backToMenuText}>
-              Back to Menu
-            </Text>
-
-          </TouchableOpacity>
-
-        </ScrollView>
-
-      </View>
-
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+          <Text style={styles.buttonText}>Delete Dish</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-
-/*
-==============================================================
-STYLES
-==============================================================
-*/
-
 const styles = StyleSheet.create({
-
-  /*
-  ============================================================
-  SAFE AREA
-  ============================================================
-  */
-
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.blue,
+    backgroundColor: "#2FA9D9",
   },
-
-
-  /*
-  ============================================================
-  CONTAINER
-  ============================================================
-  */
 
   container: {
     flex: 1,
-    backgroundColor: COLORS.blue,
+    backgroundColor: "#2FA9D9",
   },
-
-
-  /*
-  ============================================================
-  HEADER
-  ============================================================
-  */
 
   header: {
-    height: 82,
-
-    flexDirection: 'row',
-
-    alignItems: 'center',
-
-    justifyContent: 'space-between',
-
-    paddingHorizontal: 18,
+    height: 65,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
   },
 
-
-  backButton: {
-    width: 42,
-
-    height: 42,
-
-    alignItems: 'center',
-
-    justifyContent: 'center',
+  backArrow: {
+    color: "#FFFFFF",
+    fontSize: 34,
   },
-
 
   headerTitle: {
-    color: COLORS.white,
-
-    fontSize: 27,
-
-    fontFamily: 'Georgia',
-
-    fontStyle: 'italic',
-
-    fontWeight: 'bold',
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "700",
   },
 
-
-  headerRight: {
-    width: 42,
-
-    height: 42,
-  },
-
-
-  divider: {
-    width: '100%',
-
+  headerLine: {
     height: 1,
-
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 18,
   },
 
-
-  /*
-  ============================================================
-  SCROLL VIEW
-  ============================================================
-  */
-
-  scrollView: {
-    flex: 1,
-
-    backgroundColor: COLORS.blue,
+  dishImage: {
+    width: "85%",
+    height: 230,
+    borderRadius: 18,
+    alignSelf: "center",
+    marginTop: 25,
   },
 
-
-  contentContainer: {
-    paddingHorizontal: 22,
-
-    paddingTop: 30,
-
-    paddingBottom: 40,
+  imagePlaceholder: {
+    width: "85%",
+    height: 230,
+    backgroundColor: "#969A9B",
+    borderRadius: 18,
+    alignSelf: "center",
+    marginTop: 25,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
-
-  /*
-  ============================================================
-  IMAGE
-  ============================================================
-  */
-
-  imageContainer: {
-    width: '100%',
-
-    height: 172,
-
-    backgroundColor: '#D9D9D9',
-
-    borderRadius: 10,
-
-    alignItems: 'center',
-
-    justifyContent: 'center',
-
-    marginBottom: 27,
+  placeholderText: {
+    color: "#FFFFFF",
+    fontSize: 16,
   },
 
-
-  /*
-  ============================================================
-  NAME + PRICE
-  ============================================================
-  */
-
-  namePriceRow: {
-    width: '100%',
-
-    flexDirection: 'row',
-
-    alignItems: 'center',
-
-    justifyContent: 'space-between',
-
-    marginBottom: 18,
+  detailsContainer: {
+    backgroundColor: "#D9D9D9",
+    marginHorizontal: 25,
+    marginTop: 25,
+    padding: 20,
+    borderRadius: 18,
   },
-
 
   dishName: {
-    flex: 1,
-
-    color: COLORS.black,
-
-    fontSize: 29,
-
-    fontFamily: 'Georgia',
-
-    fontStyle: 'italic',
-
-    fontWeight: 'bold',
-
-    marginRight: 12,
-  },
-
-
-  price: {
-    color: COLORS.white,
-
+    color: "#000000",
     fontSize: 25,
-
-    fontFamily: 'Georgia',
-
-    fontStyle: 'italic',
-
-    fontWeight: 'bold',
+    fontWeight: "800",
   },
 
-
-  /*
-  ============================================================
-  SECTION TITLE
-  ============================================================
-  */
-
-  sectionTitle: {
-    color: COLORS.white,
-
-    fontSize: 20,
-
-    fontFamily: 'Georgia',
-
-    fontStyle: 'italic',
-
-    fontWeight: 'bold',
-
-    marginTop: 3,
-
-    marginBottom: 6,
+  course: {
+    color: "#555555",
+    fontSize: 16,
+    marginTop: 8,
+    fontWeight: "600",
   },
-
-
-  /*
-  ============================================================
-  DESCRIPTION
-  ============================================================
-  */
 
   description: {
-    color: COLORS.black,
-
-    fontSize: 17,
-
-    lineHeight: 25,
-
-    fontFamily: 'Georgia',
-
-    fontStyle: 'italic',
-
-    fontWeight: '600',
-
-    marginBottom: 14,
-
-    maxWidth: '95%',
-  },
-
-
-  /*
-  ============================================================
-  COURSE PILL
-  ============================================================
-  */
-
-  coursePill: {
-    alignSelf: 'flex-start',
-
-    backgroundColor: COLORS.grey,
-
-    borderRadius: 10,
-
-    paddingHorizontal: 16,
-
-    paddingVertical: 7,
-
-    marginTop: 2,
-
-    marginBottom: 42,
-  },
-
-
-  courseText: {
-    color: COLORS.black,
-
+    color: "#333333",
     fontSize: 16,
-
-    fontFamily: 'Georgia',
-
-    fontStyle: 'italic',
-
-    fontWeight: 'bold',
+    marginTop: 15,
+    lineHeight: 24,
   },
 
-
-  /*
-  ============================================================
-  ACTION BUTTONS
-  ============================================================
-  */
-
-  actionRow: {
-    flexDirection: 'row',
-
-    alignItems: 'center',
-
-    justifyContent: 'space-between',
-
-    width: '100%',
-
-    marginBottom: 39,
+  price: {
+    color: "#000000",
+    fontSize: 22,
+    fontWeight: "800",
+    marginTop: 18,
   },
-
-
-  /*
-  ============================================================
-  EDIT BUTTON
-  ============================================================
-  */
 
   editButton: {
-    width: '44%',
-
-    height: 38,
-
-    backgroundColor: COLORS.grey,
-
-    borderRadius: 9,
-
-    alignItems: 'center',
-
-    justifyContent: 'center',
+    height: 50,
+    backgroundColor: "#969A9B",
+    borderRadius: 12,
+    marginHorizontal: 28,
+    marginTop: 25,
+    justifyContent: "center",
+    alignItems: "center",
   },
-
-
-  editText: {
-    color: COLORS.white,
-
-    fontSize: 17,
-
-    fontFamily: 'Georgia',
-
-    fontStyle: 'italic',
-
-    fontWeight: 'bold',
-  },
-
-
-  /*
-  ============================================================
-  DELETE BUTTON
-  ============================================================
-  */
 
   deleteButton: {
-    width: '44%',
-
-    height: 38,
-
-    backgroundColor: COLORS.lightGrey,
-
-    borderRadius: 9,
-
-    alignItems: 'center',
-
-    justifyContent: 'center',
+    height: 50,
+    backgroundColor: "#D9534F",
+    borderRadius: 12,
+    marginHorizontal: 28,
+    marginTop: 15,
+    marginBottom: 30,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
-
-  deleteText: {
-    color: COLORS.black,
-
+  buttonText: {
+    color: "#FFFFFF",
     fontSize: 17,
-
-    fontFamily: 'Georgia',
-
-    fontStyle: 'italic',
-
-    fontWeight: 'bold',
+    fontWeight: "700",
   },
 
-
-  /*
-  ============================================================
-  BACK TO MENU
-  ============================================================
-  */
-
-  backToMenuButton: {
-    width: '100%',
-
-    height: 38,
-
-    backgroundColor: COLORS.lightGrey,
-
-    borderRadius: 9,
-
-    alignItems: 'center',
-
-    justifyContent: 'center',
+  loadingText: {
+    color: "#FFFFFF",
+    fontSize: 20,
+    textAlign: "center",
+    marginTop: 100,
   },
 
-
-  backToMenuText: {
-    color: COLORS.black,
-
-    fontSize: 17,
-
-    fontFamily: 'Georgia',
-
-    fontStyle: 'italic',
-
-    fontWeight: 'bold',
+  backButton: {
+    backgroundColor: "#969A9B",
+    padding: 15,
+    margin: 30,
+    borderRadius: 12,
+    alignItems: "center",
   },
-
 });
